@@ -827,38 +827,43 @@
                 
                 <div class="alert alert-info">
                     Pilih pola distribusi yang akan diterapkan untuk membagi pagu belanja per bulan. <br>
-                    <strong>Note:</strong> Sistem akan mengelompokkan data berdasarkan 3 digit pertama kode rekening.
+                    <strong>Catatan Penting:</strong> 
+                    <ul>
+                        <li>Alokasi per bulan akan berupa bilangan bulat (tidak ada angka desimal)</li>
+                        <li>Total alokasi akan sama persis dengan pagu (selisih pembulatan = 0)</li>
+                        <li>UP (Uang Persediaan) akan tetap dibulatkan ke ribuan</li>
+                    </ul>
                 </div>
                 
                 <div class="mode-grid">
                     <div class="mode-card" data-mode="monthly">
                         <div class="mode-icon">📅</div>
                         <div class="mode-title">Bulanan (Merata)</div>
-                        <div class="mode-desc">Bagikan pagu secara merata ke semua bulan aktif</div>
+                        <div class="mode-desc">Bagikan pagu secara merata ke semua bulan aktif dengan bilangan bulat</div>
                     </div>
                     
                     <div class="mode-card" data-mode="quarterly">
                         <div class="mode-icon">📊</div>
                         <div class="mode-title">Triwulan</div>
-                        <div class="mode-desc">Atur persentase per triwulan, dibagi rata per bulan dalam triwulan</div>
+                        <div class="mode-desc">Atur persentase per triwulan, dibagi rata per bulan dalam triwulan dengan bilangan bulat</div>
                     </div>
                     
                     <div class="mode-card" data-mode="semester">
                         <div class="mode-icon">📈</div>
                         <div class="mode-title">Semester</div>
-                        <div class="mode-desc">Atur persentase per semester, dibagi rata per bulan dalam semester</div>
+                        <div class="mode-desc">Atur persentase per semester, dibagi rata per bulan dalam semester dengan bilangan bulat</div>
                     </div>
                     
                     <div class="mode-card" data-mode="custom">
                         <div class="mode-icon">🎛️</div>
                         <div class="mode-title">Custom Global</div>
-                        <div class="mode-desc">Atur persentase manual untuk setiap bulan (sama untuk semua kelompok)</div>
+                        <div class="mode-desc">Atur persentase manual untuk setiap bulan (sama untuk semua kelompok) dengan bilangan bulat</div>
                     </div>
                     
                     <div class="mode-card" data-mode="per-kelompok">
                         <div class="mode-icon">🏢</div>
-                        <div class="mode-title">Per Kelompok</div>
-                        <div class="mode-desc">Atur persentase berbeda untuk setiap kelompok belanja</div>
+                        <div class="mode-title">Per Jenis Belanja</div>
+                        <div class="mode-desc">Atur persentase berbeda untuk setiap jenis belanja dengan bilangan bulat</div>
                     </div>
                 </div>
                 
@@ -869,7 +874,7 @@
                     </div>
                     
                     <div id="groupConfigSection" style="display: none; margin-top: 30px;">
-                        <h4>Konfigurasi Per Kelompok Belanja</h4>
+                        <h4>Konfigurasi Per Jenis Belanja</h4>
                         <div class="alert alert-warning">
                             <strong>Perhatian:</strong> Pastikan total persentase untuk setiap kelompok = 100%
                         </div>
@@ -925,6 +930,10 @@
                         <div class="result-value" id="resultTotalAllocated">0</div>
                     </div>
                     <div class="result-card">
+                        <div class="result-title">Selisih (Pembulatan)</div>
+                        <div class="result-value" id="resultDifference">0</div>
+                    </div>
+                    <div class="result-card">
                         <div class="result-title">Jumlah Item</div>
                         <div class="result-value" id="resultItemCount">0</div>
                     </div>
@@ -932,12 +941,18 @@
                         <div class="result-title">Pola Distribusi</div>
                         <div class="result-value" id="resultMode">-</div>
                     </div>
+                    <div class="result-card">
+                        <div class="result-title">Total UP (10%)</div>
+                        <div class="result-value" id="resultTotalUP">0</div>
+                    </div>
                 </div>
                 
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="chart">Grafik</button>
                     <button class="tab-btn" data-tab="summary">Ringkasan</button>
-                    <button class="tab-btn" data-tab="groupSummary">Ringkasan Kelompok</button>
+                    <button class="tab-btn" data-tab="groupSummary">Ringkasan Jenis Belanja</button>
+                    <button class="tab-btn" data-tab="upSummary">Ringkasan UP</button>
+                    <button class="tab-btn" data-tab="opdJenis">Per OPD per Jenis Belanja</button>
                     <button class="tab-btn" data-tab="details">Detail Per Bulan</button>
                     <button class="tab-btn" data-tab="data">Data Lengkap</button>
                 </div>
@@ -955,6 +970,14 @@
                     
                     <div id="tabGroupSummary" class="tab-pane">
                         <div id="groupSummaryTable"></div>
+                    </div>
+                    
+                    <div id="tabUpSummary" class="tab-pane">
+                        <div id="upSummaryTable"></div>
+                    </div>
+                    
+                    <div id="tabOpdJenis" class="tab-pane">
+                        <div id="opdJenisTable"></div>
                     </div>
                     
                     <div id="tabDetails" class="tab-pane">
@@ -1019,8 +1042,8 @@
             'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
         ];
         
-        // Kelompok belanja berdasarkan 3 digit pertama kode rekening
-        const KELOMPOK_BELANJA = {
+        // Jenis belanja berdasarkan 3 digit pertama kode rekening
+        const JENIS_BELANJA = {
             '5.2.03': 'Belanja Modal Bangunan dan Gedung',
             '5.1.02': 'Belanja Barang dan Jasa',
             '5.2.02': 'Belanja Modal Peralatan dan Mesin',
@@ -1036,6 +1059,8 @@
             '5.3.01': 'Belanja Tidak Terduga'
         };
         
+        const KODE_BELANJA_BARANG_JASA = '5.1.02'; // Kode untuk Belanja Barang dan Jasa
+        
         const STANDARD_COLUMNS = [
             'NO', 'TAHUN', 'KODE URUSAN', 'NAMA URUSAN', 'KODE SKPD', 'NAMA SKPD',
             'KODE SUB UNIT', 'NAMA SUB UNIT', 'KODE BIDANG URUSAN', 'NAMA BIDANG URUSAN',
@@ -1044,26 +1069,44 @@
             'KODE REKENING', 'NAMA REKENING', 'PAGU'
         ];
         
-        // ===============================
-        // 2. APPLICATION STATE
-        // ===============================
-        
-        let appState = {
-            uploadedData: null,
-            originalHeaders: [],
-            opdSummary: null,
-            selectedMode: 'monthly',
-            modeConfig: {},
-            groupConfig: {}, // Konfigurasi per kelompok
-            processedData: null,
-            monthlyTotals: new Array(12).fill(0),
-            groupMonthlyTotals: {}, // Total per kelompok per bulan
-            chart: null
-        };
+        // Default persentase per bulan untuk konfigurasi per jenis belanja
+        const DEFAULT_PERCENTAGES = [20, 20, 10, 7, 7, 6, 7, 7, 6, 4, 3, 3];
         
         // ===============================
-        // 3. UTILITY FUNCTIONS
+        // 2. UTILITY FUNCTIONS
         // ===============================
+        
+        // Fungsi pembulatan ke ribuan (HANYA untuk UP)
+        function roundToThousands(number) {
+            return Math.round(number / 1000) * 1000;
+        }
+        
+        // Fungsi untuk memformat angka tanpa pembulatan (2 desimal)
+        function formatNumberExact(number) {
+            const num = parseFloat(number) || 0;
+            return num.toLocaleString('id-ID', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        
+        // Fungsi untuk memformat angka integer (tanpa desimal)
+        function formatInteger(number) {
+            const num = parseInt(number) || 0;
+            return num.toLocaleString('id-ID', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
+        
+        // Fungsi untuk memformat angka dengan pembulatan ribuan (untuk UP saja)
+        function formatRoundedNumber(number) {
+            const rounded = roundToThousands(number);
+            return rounded.toLocaleString('id-ID', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+        }
         
         function extractGroupFromKodeRekening(kodeRekening) {
             if (!kodeRekening) return null;
@@ -1078,110 +1121,147 @@
         }
         
         function getGroupName(groupCode) {
-            return KELOMPOK_BELANJA[groupCode] || `Kelompok ${groupCode}`;
+            return JENIS_BELANJA[groupCode] || `Jenis ${groupCode}`;
         }
         
         // ===============================
-        // 4. DISTRIBUTION ENGINE
+        // 3. APPLICATION STATE
+        // ===============================
+        
+        let appState = {
+            uploadedData: null,
+            originalHeaders: [],
+            opdSummary: null,
+            selectedMode: 'monthly',
+            modeConfig: {},
+            groupConfig: {}, // Konfigurasi per jenis belanja
+            processedData: null,
+            monthlyTotals: new Array(12).fill(0),
+            groupMonthlyTotals: {}, // Total per jenis belanja per bulan
+            chart: null,
+            upSummary: null, // Ringkasan UP per OPD
+            opdJenisSummary: null // Ringkasan per OPD per Jenis Belanja
+        };
+        
+        // ===============================
+        // 4. DISTRIBUTION ENGINE DENGAN BILANGAN BULAT
         // ===============================
         
         class DistributionEngine {
-            // Monthly distribution (equal per month)
-            distributeMonthly(pagu, config = {}) {
+            // Algoritma distribusi bilangan bulat tanpa selisih
+            distributeInteger(pagu, percentages) {
                 const allocations = new Array(12).fill(0);
-                const numMonths = config.numMonths || 12;
-                const startMonth = config.startMonth || 0;
-                const monthlyAmount = pagu / numMonths;
                 
-                for (let i = startMonth; i < startMonth + numMonths && i < 12; i++) {
-                    allocations[i] = monthlyAmount;
+                // Jika pagu = 0, kembalikan array nol
+                if (pagu <= 0) return allocations;
+                
+                // Hitung alokasi desimal berdasarkan persentase
+                const decimalAllocations = percentages.map(p => (pagu * p) / 100);
+                
+                // Ambil bagian integer dari setiap alokasi (bulatkan ke bawah)
+                const intAllocations = decimalAllocations.map(a => Math.floor(a));
+                
+                // Hitung total integer dan selisih
+                const totalInt = intAllocations.reduce((sum, a) => sum + a, 0);
+                let remainder = pagu - totalInt;
+                
+                // Distribusikan sisa ke bulan-bulan dengan pecahan terbesar
+                if (remainder > 0) {
+                    // Buat array objek dengan index dan pecahan
+                    const fractions = decimalAllocations.map((a, i) => ({
+                        index: i,
+                        fraction: a - intAllocations[i]
+                    }));
+                    
+                    // Urutkan berdasarkan pecahan terbesar
+                    fractions.sort((a, b) => b.fraction - a.fraction);
+                    
+                    // Tambahkan 1 ke bulan dengan pecahan terbesar hingga sisa habis
+                    for (let i = 0; i < remainder; i++) {
+                        intAllocations[fractions[i % fractions.length].index] += 1;
+                    }
                 }
                 
-                return allocations;
+                return intAllocations;
             }
             
-            // Quarterly distribution
-            distributeQuarterly(pagu, percentages = { q1: 25, q2: 25, q3: 25, q4: 25 }) {
-                const allocations = new Array(12).fill(0);
-                const quarters = [
-                    { percent: percentages.q1 || 25, months: [0, 1, 2] },
-                    { percent: percentages.q2 || 25, months: [3, 4, 5] },
-                    { percent: percentages.q3 || 25, months: [6, 7, 8] },
-                    { percent: percentages.q4 || 25, months: [9, 10, 11] }
-                ];
-                
-                quarters.forEach(quarter => {
-                    const quarterAmount = (pagu * quarter.percent) / 100;
-                    const monthlyAmount = quarterAmount / 3;
-                    
-                    quarter.months.forEach(month => {
-                        allocations[month] = monthlyAmount;
-                    });
-                });
-                
-                return allocations;
-            }
-            
-            // Semester distribution
-            distributeSemester(pagu, percentages = { semester1: 50, semester2: 50 }) {
-                const allocations = new Array(12).fill(0);
-                const semesters = [
-                    { percent: percentages.semester1 || 50, months: [0, 1, 2, 3, 4, 5] },
-                    { percent: percentages.semester2 || 50, months: [6, 7, 8, 9, 10, 11] }
-                ];
-                
-                semesters.forEach(semester => {
-                    const semesterAmount = (pagu * semester.percent) / 100;
-                    const monthlyAmount = semesterAmount / 6;
-                    
-                    semester.months.forEach(month => {
-                        allocations[month] = monthlyAmount;
-                    });
-                });
-                
-                return allocations;
-            }
-            
-            // Custom distribution
-            distributeCustom(pagu, customPercentages) {
-                const allocations = new Array(12).fill(0);
-                
-                // customPercentages bisa berupa array persentase atau object dengan key bulan
-                if (Array.isArray(customPercentages)) {
-                    customPercentages.forEach((percent, index) => {
-                        if (index < 12) {
-                            allocations[index] = (pagu * parseFloat(percent)) / 100;
-                        }
-                    });
-                } else {
-                    Object.entries(customPercentages).forEach(([month, percent]) => {
-                        const monthIndex = parseInt(month) - 1;
-                        if (monthIndex >= 0 && monthIndex < 12) {
-                            allocations[monthIndex] = (pagu * parseFloat(percent)) / 100;
-                        }
-                    });
-                }
-                
-                return allocations;
-            }
-            
-            // Main distribution function
-            distribute(pagu, mode, config) {
-                if (pagu <= 0) return new Array(12).fill(0);
+            // Hitung persentase berdasarkan mode
+            calculatePercentages(mode, config) {
+                const percentages = new Array(12).fill(0);
                 
                 switch (mode) {
                     case 'monthly':
-                        return this.distributeMonthly(pagu, config);
+                        const numMonths = config.numMonths || 12;
+                        const startMonth = config.startMonth || 0;
+                        const monthlyPercent = 100 / numMonths;
+                        
+                        for (let i = startMonth; i < startMonth + numMonths && i < 12; i++) {
+                            percentages[i] = monthlyPercent;
+                        }
+                        break;
+                        
                     case 'quarterly':
-                        return this.distributeQuarterly(pagu, config);
+                        const quarters = [
+                            { percent: config.q1 || 25, months: [0, 1, 2] },
+                            { percent: config.q2 || 25, months: [3, 4, 5] },
+                            { percent: config.q3 || 25, months: [6, 7, 8] },
+                            { percent: config.q4 || 25, months: [9, 10, 11] }
+                        ];
+                        
+                        quarters.forEach(quarter => {
+                            const monthlyPercent = quarter.percent / 3;
+                            quarter.months.forEach(month => {
+                                percentages[month] = monthlyPercent;
+                            });
+                        });
+                        break;
+                        
                     case 'semester':
-                        return this.distributeSemester(pagu, config);
+                        const semesters = [
+                            { percent: config.semester1 || 50, months: [0, 1, 2, 3, 4, 5] },
+                            { percent: config.semester2 || 50, months: [6, 7, 8, 9, 10, 11] }
+                        ];
+                        
+                        semesters.forEach(semester => {
+                            const monthlyPercent = semester.percent / 6;
+                            semester.months.forEach(month => {
+                                percentages[month] = monthlyPercent;
+                            });
+                        });
+                        break;
+                        
                     case 'custom':
+                        if (Array.isArray(config)) {
+                            config.forEach((percent, index) => {
+                                if (index < 12) percentages[index] = percent;
+                            });
+                        } else {
+                            Object.entries(config).forEach(([month, percent]) => {
+                                const monthIndex = parseInt(month) - 1;
+                                if (monthIndex >= 0 && monthIndex < 12) {
+                                    percentages[monthIndex] = percent;
+                                }
+                            });
+                        }
+                        break;
+                        
                     case 'per-kelompok':
-                        return this.distributeCustom(pagu, config);
-                    default:
-                        return this.distributeMonthly(pagu);
+                        // Untuk mode ini, persentase dikembalikan langsung dari config
+                        return config;
                 }
+                
+                return percentages;
+            }
+            
+            // Main distribution function untuk bilangan bulat
+            distributeIntegerWithMode(pagu, mode, config) {
+                const percentages = this.calculatePercentages(mode, config);
+                return this.distributeInteger(pagu, percentages);
+            }
+            
+            // Untuk mode per-kelompok
+            distributeIntegerWithGroup(pagu, groupConfig) {
+                return this.distributeInteger(pagu, groupConfig);
             }
         }
         
@@ -1245,10 +1325,10 @@
                                     // Ensure we have pagu as number
                                     item.PAGU = parseFloat(item.PAGU) || 0;
                                     
-                                    // Extract kelompok from kode rekening
+                                    // Extract jenis belanja from kode rekening
                                     const kodeRekening = item['KODE REKENING'] || '';
-                                    item.KELOMPOK = extractGroupFromKodeRekening(kodeRekening);
-                                    item.KELOMPOK_NAME = getGroupName(item.KELOMPOK);
+                                    item.JENIS_BELANJA = extractGroupFromKodeRekening(kodeRekening);
+                                    item.JENIS_BELANJA_NAME = getGroupName(item.JENIS_BELANJA);
                                     
                                     // Add original row number
                                     item._rowNumber = index + headerRowIndex + 2;
@@ -1375,8 +1455,8 @@
                 let totalPagu = 0;
                 
                 data.forEach(item => {
-                    const groupCode = item.KELOMPOK || 'Tidak Diketahui';
-                    const groupName = item.KELOMPOK_NAME || getGroupName(groupCode);
+                    const groupCode = item.JENIS_BELANJA || 'Tidak Diketahui';
+                    const groupName = item.JENIS_BELANJA_NAME || getGroupName(groupCode);
                     const pagu = item.PAGU || 0;
                     
                     if (!groupMap.has(groupCode)) {
@@ -1416,18 +1496,102 @@
                 };
             }
             
+            analyzeOpdJenisSummary(data) {
+                const opdMap = new Map();
+                
+                data.forEach(item => {
+                    const opdName = item['NAMA SKPD'] || item['KODE SKPD'] || item['KODE SUB UNIT'] || 'Tidak Ada OPD';
+                    const jenisKode = item.JENIS_BELANJA || 'Tidak Diketahui';
+                    const jenisName = item.JENIS_BELANJA_NAME || getGroupName(jenisKode);
+                    const pagu = item.PAGU || 0;
+                    
+                    if (!opdMap.has(opdName)) {
+                        opdMap.set(opdName, new Map());
+                    }
+                    
+                    const jenisMap = opdMap.get(opdName);
+                    
+                    if (!jenisMap.has(jenisKode)) {
+                        jenisMap.set(jenisKode, {
+                            code: jenisKode,
+                            name: jenisName,
+                            totalPagu: 0,
+                            itemCount: 0
+                        });
+                    }
+                    
+                    const jenisData = jenisMap.get(jenisKode);
+                    jenisData.totalPagu += pagu;
+                    jenisData.itemCount += 1;
+                });
+                
+                // Convert to array structure
+                const opdArray = [];
+                opdMap.forEach((jenisMap, opdName) => {
+                    const jenisArray = Array.from(jenisMap.values());
+                    jenisArray.sort((a, b) => b.totalPagu - a.totalPagu);
+                    
+                    opdArray.push({
+                        name: opdName,
+                        jenisBelanja: jenisArray,
+                        totalPagu: jenisArray.reduce((sum, item) => sum + item.totalPagu, 0),
+                        totalItem: jenisArray.reduce((sum, item) => sum + item.itemCount, 0)
+                    });
+                });
+                
+                // Sort by total pagu descending
+                opdArray.sort((a, b) => b.totalPagu - a.totalPagu);
+                
+                return opdArray;
+            }
+            
+            calculateUP(data) {
+                const upSummary = new Map();
+                
+                data.forEach(item => {
+                    const opdName = item['NAMA SKPD'] || item['KODE SKPD'] || item['KODE SUB UNIT'] || 'Tidak Ada OPD';
+                    const groupCode = item.JENIS_BELANJA || 'Tidak Diketahui';
+                    const pagu = item.PAGU || 0;
+                    
+                    if (!upSummary.has(opdName)) {
+                        upSummary.set(opdName, {
+                            name: opdName,
+                            totalPagu: 0,
+                            totalBelanjaBarangJasa: 0,
+                            up: 0
+                        });
+                    }
+                    
+                    const opdData = upSummary.get(opdName);
+                    opdData.totalPagu += pagu;
+                    
+                    // Jika ini adalah belanja barang jasa (kode 5.1.02)
+                    if (groupCode === KODE_BELANJA_BARANG_JASA) {
+                        opdData.totalBelanjaBarangJasa += pagu;
+                    }
+                });
+                
+                // Hitung UP (10% dari total belanja barang jasa) dan bulatkan ke ribuan
+                upSummary.forEach(opdData => {
+                    opdData.up = roundToThousands(opdData.totalBelanjaBarangJasa * 0.1);
+                });
+                
+                return Array.from(upSummary.values());
+            }
+            
             applyDistribution(data, mode, config, groupConfig = null) {
                 return data.map(item => {
                     const pagu = item.PAGU || 0;
                     let allocations;
                     
-                    // Jika mode per-kelompok dan ada konfigurasi untuk kelompok ini
-                    if (mode === 'per-kelompok' && groupConfig && item.KELOMPOK && groupConfig[item.KELOMPOK]) {
-                        allocations = this.distributionEngine.distribute(pagu, 'per-kelompok', groupConfig[item.KELOMPOK]);
+                    // Jika mode per-kelompok dan ada konfigurasi untuk jenis belanja ini
+                    if (mode === 'per-kelompok' && groupConfig && item.JENIS_BELANJA && groupConfig[item.JENIS_BELANJA]) {
+                        allocations = this.distributionEngine.distributeIntegerWithGroup(pagu, groupConfig[item.JENIS_BELANJA]);
                     } else {
-                        allocations = this.distributionEngine.distribute(pagu, mode, config);
+                        allocations = this.distributionEngine.distributeIntegerWithMode(pagu, mode, config);
                     }
                     
+                    // Hitung total alokasi setelah distribusi
                     const totalAllocated = allocations.reduce((sum, val) => sum + val, 0);
                     
                     return {
@@ -1437,6 +1601,26 @@
                         distributionMode: mode
                     };
                 });
+            }
+            
+            // Validasi bahwa total alokasi = total pagu
+            validateAllocation(data) {
+                let totalPagu = 0;
+                let totalAllocated = 0;
+                
+                data.forEach(item => {
+                    totalPagu += item.PAGU;
+                    totalAllocated += item.totalAllocated;
+                });
+                
+                const diff = Math.abs(totalAllocated - totalPagu);
+                
+                return {
+                    isValid: diff === 0,
+                    totalPagu: totalPagu,
+                    totalAllocated: totalAllocated,
+                    difference: diff
+                };
             }
         }
         
@@ -1528,8 +1712,8 @@
                     
                     // Update UI with statistics
                     document.getElementById('totalRows').textContent = totalRows.toLocaleString('id-ID');
-                    document.getElementById('totalPaguUpload').textContent = this.formatNumber(totalPagu);
-                    document.getElementById('avgPagu').textContent = this.formatNumber(avgPagu);
+                    document.getElementById('totalPaguUpload').textContent = formatNumberExact(totalPagu);
+                    document.getElementById('avgPagu').textContent = formatNumberExact(avgPagu);
                     
                     // Show preview table (first 10 rows)
                     this.showPreviewTable(data.slice(0, 10));
@@ -1546,7 +1730,7 @@
                     // Show review data
                     this.showReviewData();
                     
-                    this.showAlert(`Berhasil mengupload ${totalRows} baris data dengan total pagu ${this.formatNumber(totalPagu)}`, 'success');
+                    this.showAlert(`Berhasil mengupload ${totalRows} baris data dengan total pagu ${formatNumberExact(totalPagu)}`, 'success');
                     
                 } catch (error) {
                     console.error('Upload error:', error);
@@ -1567,7 +1751,7 @@
                 const headerRow = document.createElement('tr');
                 
                 // Tampilkan kolom penting saja untuk preview
-                const previewColumns = ['NO', 'KODE SKPD', 'NAMA SKPD', 'KODE REKENING', 'NAMA REKENING', 'PAGU', 'KELOMPOK'];
+                const previewColumns = ['NO', 'KODE SKPD', 'NAMA SKPD', 'KODE REKENING', 'NAMA REKENING', 'PAGU', 'JENIS_BELANJA'];
                 
                 previewColumns.forEach(col => {
                     const th = document.createElement('th');
@@ -1584,13 +1768,13 @@
                     previewColumns.forEach(col => {
                         let value = item[col] !== undefined ? item[col] : '';
                         
-                        // Format khusus untuk PAGU
+                        // Format khusus untuk PAGU (tampilkan tanpa pembulatan)
                         if (col === 'PAGU') {
-                            value = this.formatNumber(value);
+                            value = formatNumberExact(value);
                         }
                         
-                        // Format kelompok
-                        if (col === 'KELOMPOK' && value) {
+                        // Format jenis belanja
+                        if (col === 'JENIS_BELANJA' && value) {
                             value = getGroupName(value) || value;
                         }
                         
@@ -1631,10 +1815,10 @@
                         </div>
                         <div class="stat-card">
                             <div class="stat-value">${groupSummary.totalGroups}</div>
-                            <div class="stat-label">Jumlah Kelompok</div>
+                            <div class="stat-label">Jumlah Jenis Belanja</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value">${this.formatNumber(totalPagu)}</div>
+                            <div class="stat-value">${formatNumberExact(totalPagu)}</div>
                             <div class="stat-label">Total Pagu</div>
                         </div>
                     </div>
@@ -1653,7 +1837,7 @@
                 // Update OPD summary
                 let opdSummaryHTML = `
                     <div class="alert alert-info">
-                        <strong>${summary.totalOPD} OPD/SKPD ditemukan</strong> dengan total pagu ${this.formatNumber(totalPagu)}
+                        <strong>${summary.totalOPD} OPD/SKPD ditemukan</strong> dengan total pagu ${formatNumberExact(totalPagu)}
                     </div>
                     <div class="data-table-container">
                         <table class="opd-table">
@@ -1679,10 +1863,10 @@
                             <td>${index + 1}</td>
                             <td><span class="opd-badge">${opd.name}</span></td>
                             <td class="text-right">${opd.itemCount.toLocaleString('id-ID')}</td>
-                            <td class="text-right">${this.formatNumber(opd.totalPagu)}</td>
-                            <td class="text-right">${this.formatNumber(opd.avgPagu)}</td>
-                            <td class="text-right">${this.formatNumber(opd.minPagu)}</td>
-                            <td class="text-right">${this.formatNumber(opd.maxPagu)}</td>
+                            <td class="text-right">${formatNumberExact(opd.totalPagu)}</td>
+                            <td class="text-right">${formatNumberExact(opd.avgPagu)}</td>
+                            <td class="text-right">${formatNumberExact(opd.minPagu)}</td>
+                            <td class="text-right">${formatNumberExact(opd.maxPagu)}</td>
                             <td class="text-right">${percentage}%</td>
                         </tr>
                     `;
@@ -1695,10 +1879,10 @@
                                 <tr style="background-color: #f8f9fa; font-weight: bold;">
                                     <td colspan="2">TOTAL</td>
                                     <td class="text-right">${totalRows.toLocaleString('id-ID')}</td>
-                                    <td class="text-right">${this.formatNumber(totalPagu)}</td>
-                                    <td class="text-right">${this.formatNumber(totalPagu / totalRows)}</td>
-                                    <td class="text-right">${this.formatNumber(Math.min(...summary.opdDetails.map(o => o.minPagu)))}</td>
-                                    <td class="text-right">${this.formatNumber(Math.max(...summary.opdDetails.map(o => o.maxPagu)))}</td>
+                                    <td class="text-right">${formatNumberExact(totalPagu)}</td>
+                                    <td class="text-right">${formatNumberExact(totalPagu / totalRows)}</td>
+                                    <td class="text-right">${formatNumberExact(Math.min(...summary.opdDetails.map(o => o.minPagu)))}</td>
+                                    <td class="text-right">${formatNumberExact(Math.max(...summary.opdDetails.map(o => o.maxPagu)))}</td>
                                     <td class="text-right">100%</td>
                                 </tr>
                             </tfoot>
@@ -1722,10 +1906,10 @@
                 // Show configuration section
                 document.getElementById('modeConfigSection').style.display = 'block';
                 
-                // Tampilkan/menyembunyikan konfigurasi kelompok
+                // Tampilkan/menyembunyikan konfigurasi jenis belanja
                 if (mode === 'per-kelompok') {
                     document.getElementById('groupConfigSection').style.display = 'block';
-                    document.getElementById('modeConfigTitle').textContent = 'Konfigurasi Per Kelompok Belanja';
+                    document.getElementById('modeConfigTitle').textContent = 'Konfigurasi Per Jenis Belanja';
                     this.generateGroupConfigUI();
                 } else {
                     document.getElementById('groupConfigSection').style.display = 'none';
@@ -1740,7 +1924,7 @@
                     'quarterly': 'Triwulan',
                     'semester': 'Semester',
                     'custom': 'Custom Global',
-                    'per-kelompok': 'Per Kelompok'
+                    'per-kelompok': 'Per Jenis Belanja'
                 };
                 return modeNames[mode] || mode;
             }
@@ -1776,6 +1960,10 @@
                                     ).join('')}
                                 </select>
                             </div>
+                            <div class="alert alert-info">
+                                <strong>Catatan:</strong> Alokasi per bulan akan berupa bilangan bulat tanpa desimal.
+                                Total alokasi akan sama persis dengan pagu (selisih = 0).
+                            </div>
                         `;
                         break;
                         
@@ -1783,6 +1971,8 @@
                         container.innerHTML = `
                             <div class="alert alert-info">
                                 Atur persentase untuk setiap triwulan. Total harus 100%.
+                                <br><strong>Catatan:</strong> Alokasi per bulan akan berupa bilangan bulat tanpa desimal.
+                                Total alokasi akan sama persis dengan pagu (selisih = 0).
                             </div>
                             <div class="quarter-inputs">
                                 <div class="quarter-box">
@@ -1824,6 +2014,8 @@
                         container.innerHTML = `
                             <div class="alert alert-info">
                                 Atur persentase untuk setiap semester. Total harus 100%.
+                                <br><strong>Catatan:</strong> Alokasi per bulan akan berupa bilangan bulat tanpa desimal.
+                                Total alokasi akan sama persis dengan pagu (selisih = 0).
                             </div>
                             <div class="semester-inputs">
                                 <div class="semester-box">
@@ -1855,6 +2047,8 @@
                         container.innerHTML = `
                             <div class="alert alert-info">
                                 Atur persentase untuk setiap bulan. Total harus 100%.
+                                <br><strong>Catatan:</strong> Alokasi per bulan akan berupa bilangan bulat tanpa desimal.
+                                Total alokasi akan sama persis dengan pagu (selisih = 0).
                             </div>
                             <div class="custom-month-inputs">
                                 ${BULAN_INDONESIA.map((bulan, index) => `
@@ -1896,12 +2090,15 @@
                 const container = document.getElementById('modeConfigContent');
                 container.innerHTML = `
                     <div class="alert alert-info">
-                        <strong>Konfigurasi Per Kelompok Belanja:</strong> Atur persentase distribusi per bulan untuk setiap kelompok.
+                        <strong>Konfigurasi Per Jenis Belanja:</strong> Atur persentase distribusi per bulan untuk setiap jenis belanja.
                         Sistem akan mengelompokkan data berdasarkan 3 digit pertama kode rekening.
+                        <br><strong>Default: 20,20,10,7,7,6,7,7,6,4,3,3 (Total 100%)</strong>
+                        <br><strong>Catatan:</strong> Alokasi per bulan akan berupa bilangan bulat tanpa desimal.
+                        Total alokasi akan sama persis dengan pagu (selisih = 0).
                     </div>
                 `;
                 
-                // Buat tabel konfigurasi kelompok
+                // Buat tabel konfigurasi jenis belanja
                 this.createGroupConfigTable();
             }
             
@@ -1913,12 +2110,12 @@
                 
                 let html = `
                     <div class="group-config-section">
-                        <p><strong>Total ${groups.length} kelompok ditemukan dalam data:</strong></p>
+                        <p><strong>Total ${groups.length} jenis belanja ditemukan dalam data:</strong></p>
                         <div class="data-table-container">
                             <table class="group-table">
                                 <thead>
                                     <tr>
-                                        <th class="group-name-cell">Kelompok Belanja</th>
+                                        <th class="group-name-cell">Jenis Belanja</th>
                                         ${BULAN_SINGKAT.map(bulan => `<th>${bulan}</th>`).join('')}
                                         <th>Total</th>
                                         <th>Status</th>
@@ -1928,18 +2125,16 @@
                 `;
                 
                 groups.forEach((group, index) => {
-                    // Default: distribusi merata
-                    const defaultPercent = (100 / 12).toFixed(2);
                     html += `
                         <tr class="group-row">
                             <td class="group-name-cell">
                                 <strong>${group.code}</strong><br>
                                 <small>${group.name}</small><br>
-                                <small>${this.formatNumber(group.totalPagu)} (${group.itemCount} item)</small>
+                                <small>${formatNumberExact(group.totalPagu)} (${group.itemCount} item)</small>
                             </td>
                     `;
                     
-                    // Input untuk setiap bulan
+                    // Input untuk setiap bulan dengan nilai default 20,20,10,7,7,6,7,7,6,4,3,3
                     for (let i = 0; i < 12; i++) {
                         html += `
                             <td>
@@ -1947,7 +2142,7 @@
                                        class="month-input group-percent" 
                                        data-group="${group.code}"
                                        data-month="${i}"
-                                       value="${defaultPercent}"
+                                       value="${DEFAULT_PERCENTAGES[i]}"
                                        min="0" max="100" step="0.01">
                             </td>
                         `;
@@ -1968,11 +2163,11 @@
                             </table>
                         </div>
                         <div class="form-group" style="margin-top: 20px;">
-                            <button id="btnDistributeEvenlyAllGroups" class="btn btn-secondary">
-                                Bagi Merata untuk Semua Kelompok (8.33% per bulan)
+                            <button id="btnDistributeDefaultAllGroups" class="btn btn-secondary">
+                                Set Default untuk Semua Jenis Belanja (20,20,10,7,7,6,7,7,6,4,3,3)
                             </button>
                             <button id="btnValidateGroups" class="btn btn-primary">
-                                Validasi Semua Kelompok
+                                Validasi Semua Jenis Belanja
                             </button>
                         </div>
                     </div>
@@ -1986,8 +2181,8 @@
                     input.addEventListener('change', (e) => this.updateGroupTotal(e.target));
                 });
                 
-                document.getElementById('btnDistributeEvenlyAllGroups').addEventListener('click', () => {
-                    this.distributeEvenlyAllGroups();
+                document.getElementById('btnDistributeDefaultAllGroups').addEventListener('click', () => {
+                    this.distributeDefaultAllGroups();
                 });
                 
                 document.getElementById('btnValidateGroups').addEventListener('click', () => {
@@ -2053,10 +2248,10 @@
                 });
             }
             
-            distributeEvenlyAllGroups() {
-                const evenValue = (100 / 12).toFixed(2);
-                document.querySelectorAll('.group-percent').forEach(input => {
-                    input.value = evenValue;
+            distributeDefaultAllGroups() {
+                document.querySelectorAll('.group-percent').forEach((input, index) => {
+                    const monthIndex = index % 12;
+                    input.value = DEFAULT_PERCENTAGES[monthIndex];
                 });
                 this.updateAllGroupTotals();
             }
@@ -2084,9 +2279,9 @@
                 });
                 
                 if (allValid) {
-                    this.showAlert('Semua kelompok sudah valid (total = 100%)', 'success');
+                    this.showAlert('Semua jenis belanja sudah valid (total = 100%)', 'success');
                 } else {
-                    this.showAlert(`Masih ada ${invalidGroups.length} kelompok yang totalnya tidak 100%`, 'warning');
+                    this.showAlert(`Masih ada ${invalidGroups.length} jenis belanja yang totalnya tidak 100%`, 'warning');
                 }
                 
                 return allValid;
@@ -2180,6 +2375,10 @@
                 const mode = appState.selectedMode;
                 let config = this.getConfigFromUI();
                 
+                // Hitung UP untuk preview
+                const upSummary = this.fileProcessor.calculateUP(appState.uploadedData);
+                const totalUP = upSummary.reduce((sum, opd) => sum + opd.up, 0);
+                
                 let html = `
                     <div class="stats-summary">
                         <div class="stat-card">
@@ -2187,7 +2386,7 @@
                             <div class="stat-label">Jumlah Item</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value">${this.formatNumber(this.getTotalPagu())}</div>
+                            <div class="stat-value">${formatNumberExact(this.getTotalPagu())}</div>
                             <div class="stat-label">Total Pagu</div>
                         </div>
                         <div class="stat-card">
@@ -2198,6 +2397,19 @@
                             <div class="stat-value">${this.getModeName(mode)}</div>
                             <div class="stat-label">Pola Distribusi</div>
                         </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${formatRoundedNumber(totalUP)}</div>
+                            <div class="stat-label">Total UP (10% dari Belanja Barang Jasa)</div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-success">
+                        <strong>Catatan Penting:</strong>
+                        <ul>
+                            <li>Alokasi per bulan akan berupa bilangan bulat (tanpa desimal)</li>
+                            <li>Total alokasi akan sama persis dengan pagu (selisih = 0)</li>
+                            <li>UP (Uang Persediaan) akan dibulatkan ke ribuan</li>
+                        </ul>
                     </div>
                     
                     <h3>Detail Konfigurasi:</h3>
@@ -2209,6 +2421,7 @@
                             <div class="alert alert-info">
                                 Pagu akan dibagi merata ke ${config.numMonths} bulan, mulai dari ${BULAN_INDONESIA[config.startMonth]}.
                                 Setiap bulan akan menerima ${(100 / config.numMonths).toFixed(2)}% dari pagu.
+                                <br><strong>Hasil alokasi per bulan akan berupa bilangan bulat tanpa desimal.</strong>
                             </div>
                         `;
                         break;
@@ -2217,6 +2430,7 @@
                         html += `
                             <div class="alert alert-info">
                                 Pagu akan dibagi per triwulan dengan persentase sebagai berikut:
+                                <br><strong>Hasil alokasi per bulan akan berupa bilangan bulat tanpa desimal.</strong>
                             </div>
                             <div class="quarter-inputs">
                                 ${['Q1 (Jan-Mar)', 'Q2 (Apr-Jun)', 'Q3 (Jul-Sep)', 'Q4 (Okt-Des)'].map((label, index) => `
@@ -2234,6 +2448,7 @@
                         html += `
                             <div class="alert alert-info">
                                 Pagu akan dibagi per semester dengan persentase sebagai berikut:
+                                <br><strong>Hasil alokasi per bulan akan berupa bilangan bulat tanpa desimal.</strong>
                             </div>
                             <div class="semester-inputs">
                                 <div class="semester-box">
@@ -2253,7 +2468,8 @@
                     case 'custom':
                         html += `
                             <div class="alert alert-info">
-                                Pagu akan dibagi per bulan dengan persentase sebagai berikut (sama untuk semua kelompok):
+                                Pagu akan dibagi per bulan dengan persentase sebagai berikut (sama untuk semua jenis belanja):
+                                <br><strong>Hasil alokasi per bulan akan berupa bilangan bulat tanpa desimal.</strong>
                             </div>
                             <div class="custom-month-inputs">
                                 ${BULAN_INDONESIA.map((bulan, index) => {
@@ -2272,7 +2488,7 @@
                     case 'per-kelompok':
                         // Validasi dulu sebelum preview
                         if (!this.validateAllGroups()) {
-                            this.showAlert('Masih ada kelompok yang total persentasenya tidak 100%. Silakan periksa kembali.', 'warning');
+                            this.showAlert('Masih ada jenis belanja yang total persentasenya tidak 100%. Silakan periksa kembali.', 'warning');
                             return;
                         }
                         
@@ -2281,16 +2497,17 @@
                         
                         html += `
                             <div class="alert alert-info">
-                                Pagu akan dibagi per bulan dengan konfigurasi berbeda untuk setiap kelompok.
-                                Total ${groupSummary.totalGroups} kelompok akan diproses.
+                                Pagu akan dibagi per bulan dengan konfigurasi berbeda untuk setiap jenis belanja.
+                                Total ${groupSummary.totalGroups} jenis belanja akan diproses.
+                                <br><strong>Hasil alokasi per bulan akan berupa bilangan bulat tanpa desimal.</strong>
                             </div>
-                            <h4>Ringkasan Kelompok:</h4>
+                            <h4>Ringkasan Jenis Belanja:</h4>
                             <div class="data-table-container">
                                 <table class="opd-table">
                                     <thead>
                                         <tr>
-                                            <th>Kode Kelompok</th>
-                                            <th>Nama Kelompok</th>
+                                            <th>Kode Jenis Belanja</th>
+                                            <th>Nama Jenis Belanja</th>
                                             <th class="text-right">Jumlah Item</th>
                                             <th class="text-right">Total Pagu</th>
                                             <th class="text-right">Status Konfigurasi</th>
@@ -2308,7 +2525,7 @@
                                     <td><strong>${group.code}</strong></td>
                                     <td>${group.name}</td>
                                     <td class="text-right">${group.itemCount}</td>
-                                    <td class="text-right">${this.formatNumber(group.totalPagu)}</td>
+                                    <td class="text-right">${formatNumberExact(group.totalPagu)}</td>
                                     <td class="text-right">
                                         ${isValid ? 
                                             '<span style="color: green; font-weight: bold;">✓ Valid</span>' : 
@@ -2377,7 +2594,7 @@
                     // Validasi berdasarkan mode
                     if (mode === 'per-kelompok') {
                         if (!this.validateAllGroups()) {
-                            this.showAlert('Masih ada kelompok yang total persentasenya tidak 100%. Silakan periksa kembali.', 'warning');
+                            this.showAlert('Masih ada jenis belanja yang total persentasenya tidak 100%. Silakan periksa kembali.', 'warning');
                             return;
                         }
                         appState.groupConfig = this.getGroupConfigFromUI();
@@ -2398,6 +2615,13 @@
                         appState.processedData = this.fileProcessor.applyDistribution(data, mode, config);
                     }
                     
+                    // Validasi bahwa total alokasi = total pagu
+                    const validation = this.fileProcessor.validateAllocation(appState.processedData);
+                    
+                    if (!validation.isValid) {
+                        this.showAlert(`Peringatan: Selisih ditemukan antara pagu dan alokasi: ${validation.difference}`, 'warning');
+                    }
+                    
                     // Calculate monthly totals
                     appState.monthlyTotals = new Array(12).fill(0);
                     appState.groupMonthlyTotals = {};
@@ -2406,8 +2630,8 @@
                         item.allocations.forEach((amount, index) => {
                             appState.monthlyTotals[index] += amount;
                             
-                            // Hitung juga total per kelompok
-                            const groupCode = item.KELOMPOK || 'Tidak Diketahui';
+                            // Hitung juga total per jenis belanja
+                            const groupCode = item.JENIS_BELANJA || 'Tidak Diketahui';
                             if (!appState.groupMonthlyTotals[groupCode]) {
                                 appState.groupMonthlyTotals[groupCode] = new Array(12).fill(0);
                             }
@@ -2415,13 +2639,23 @@
                         });
                     });
                     
+                    // Hitung UP (dengan pembulatan ribuan)
+                    appState.upSummary = this.fileProcessor.calculateUP(appState.processedData);
+                    
+                    // Hitung per OPD per Jenis Belanja
+                    appState.opdJenisSummary = this.fileProcessor.analyzeOpdJenisSummary(appState.processedData);
+                    
                     // Move to results step
                     this.goToStep(5);
                     
                     // Display results
                     this.displayResults();
                     
-                    this.showAlert('Pembagian pagu berhasil diproses', 'success');
+                    if (validation.isValid) {
+                        this.showAlert('Pembagian pagu berhasil diproses. Total alokasi sama persis dengan total pagu (selisih = 0).', 'success');
+                    } else {
+                        this.showAlert(`Pembagian pagu berhasil diproses dengan selisih ${validation.difference}.`, 'warning');
+                    }
                     
                 } catch (error) {
                     console.error('Process error:', error);
@@ -2434,18 +2668,36 @@
             displayResults() {
                 const totalPagu = this.getTotalPagu();
                 const totalAllocated = appState.processedData.reduce((sum, item) => sum + item.totalAllocated, 0);
+                const totalUP = appState.upSummary.reduce((sum, opd) => sum + opd.up, 0);
+                const difference = totalAllocated - totalPagu;
                 
                 // Update summary cards
-                document.getElementById('resultTotalPagu').textContent = this.formatNumber(totalPagu);
-                document.getElementById('resultTotalAllocated').textContent = this.formatNumber(totalAllocated);
+                document.getElementById('resultTotalPagu').textContent = formatNumberExact(totalPagu);
+                document.getElementById('resultTotalAllocated').textContent = formatInteger(totalAllocated);
+                document.getElementById('resultDifference').textContent = formatInteger(difference);
                 document.getElementById('resultItemCount').textContent = appState.processedData.length.toLocaleString('id-ID');
                 document.getElementById('resultMode').textContent = this.getModeName(appState.selectedMode);
+                document.getElementById('resultTotalUP').textContent = formatRoundedNumber(totalUP);
+                
+                // Tampilkan warna berdasarkan selisih
+                const diffElement = document.getElementById('resultDifference');
+                if (difference === 0) {
+                    diffElement.style.color = 'green';
+                } else {
+                    diffElement.style.color = 'red';
+                }
                 
                 // Display monthly table
                 this.displayMonthlyTable();
                 
                 // Display group summary
                 this.displayGroupSummary();
+                
+                // Display UP summary
+                this.displayUPSummary();
+                
+                // Display per OPD per Jenis Belanja
+                this.displayOpdJenisSummary();
                 
                 // Display data table (first 100 rows)
                 this.displayDataTable();
@@ -2472,7 +2724,7 @@
                     
                     const cells = [
                         BULAN_INDONESIA[index],
-                        this.formatNumber(amount),
+                        `${formatInteger(amount)}`,
                         `${percentage}%`,
                         `${percentageOfTotal}%`
                     ];
@@ -2493,7 +2745,7 @@
                 
                 const totalCells = [
                     'TOTAL',
-                    this.formatNumber(totalAllocated),
+                    `${formatInteger(totalAllocated)}`,
                     '100%',
                     totalPagu > 0 ? `${(totalAllocated / totalPagu * 100).toFixed(2)}%` : '0%'
                 ];
@@ -2515,14 +2767,15 @@
                 
                 let html = `
                     <div class="alert alert-info">
-                        <strong>Ringkasan Distribusi Per Kelompok:</strong> Total ${groupSummary.totalGroups} kelompok belanja
+                        <strong>Ringkasan Distribusi Per Jenis Belanja:</strong> Total ${groupSummary.totalGroups} jenis belanja
+                        <br><small>Catatan: Hasil alokasi per bulan berupa bilangan bulat tanpa desimal</small>
                     </div>
                     <div class="data-table-container">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Kode Kelompok</th>
-                                    <th>Nama Kelompok</th>
+                                    <th>Kode Jenis Belanja</th>
+                                    <th>Nama Jenis Belanja</th>
                                     <th class="text-right">Jumlah Item</th>
                                     <th class="text-right">Total Pagu</th>
                                     ${BULAN_SINGKAT.map(bulan => `<th class="text-right">${bulan}</th>`).join('')}
@@ -2544,16 +2797,16 @@
                             <td><strong>${groupCode}</strong></td>
                             <td>${group.name}</td>
                             <td class="text-right">${group.itemCount}</td>
-                            <td class="text-right">${this.formatNumber(group.totalPagu)}</td>
+                            <td class="text-right">${formatNumberExact(group.totalPagu)}</td>
                     `;
                     
                     // Data per bulan
                     groupTotals.forEach(amount => {
-                        html += `<td class="text-right">${this.formatNumber(amount)}</td>`;
+                        html += `<td class="text-right">${formatInteger(amount)}</td>`;
                     });
                     
                     html += `
-                            <td class="text-right">${this.formatNumber(totalGroupAllocated)}</td>
+                            <td class="text-right">${formatInteger(totalGroupAllocated)}</td>
                             <td class="text-right">${percentageOfTotal}%</td>
                         </tr>
                     `;
@@ -2565,15 +2818,15 @@
                             <tfoot>
                                 <tr style="background-color: #f8f9fa; font-weight: bold;">
                                     <td colspan="3">TOTAL</td>
-                                    <td class="text-right">${this.formatNumber(this.getTotalPagu())}</td>
+                                    <td class="text-right">${formatNumberExact(this.getTotalPagu())}</td>
                 `;
                 
                 appState.monthlyTotals.forEach(amount => {
-                    html += `<td class="text-right">${this.formatNumber(amount)}</td>`;
+                    html += `<td class="text-right">${formatInteger(amount)}</td>`;
                 });
                 
                 html += `
-                                    <td class="text-right">${this.formatNumber(totalAllocated)}</td>
+                                    <td class="text-right">${formatInteger(totalAllocated)}</td>
                                     <td class="text-right">100%</td>
                                 </tr>
                             </tfoot>
@@ -2582,6 +2835,159 @@
                 `;
                 
                 container.innerHTML = html;
+            }
+            
+            displayUPSummary() {
+                if (!appState.upSummary) return;
+                
+                const upSummary = appState.upSummary;
+                const totalUP = upSummary.reduce((sum, opd) => sum + opd.up, 0);
+                
+                let html = `
+                    <div class="alert alert-info">
+                        <strong>Ringkasan Uang Persediaan (UP) per OPD/SKPD:</strong><br>
+                        UP dihitung sebesar 10% dari total Belanja Barang dan Jasa (Jenis ${KODE_BELANJA_BARANG_JASA}) masing-masing OPD
+                        <br><small>Catatan: UP sudah dibulatkan ke ribuan terdekat</small>
+                    </div>
+                    
+                    <div class="summary-cards">
+                        <div class="result-card">
+                            <div class="result-title">Total OPD/SKPD</div>
+                            <div class="result-value">${upSummary.length}</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-title">Total UP</div>
+                            <div class="result-value">${formatRoundedNumber(totalUP)}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>OPD/SKPD</th>
+                                    <th class="text-right">Total Pagu</th>
+                                    <th class="text-right">Total Belanja Barang & Jasa</th>
+                                    <th class="text-right">UP (10%)</th>
+                                    <th class="text-right">% dari Total Pagu</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                // Sort by UP descending
+                const sortedSummary = [...upSummary].sort((a, b) => b.up - a.up);
+                const totalPaguAll = sortedSummary.reduce((sum, opd) => sum + opd.totalPagu, 0);
+                
+                sortedSummary.forEach((opd, index) => {
+                    const percentage = totalPaguAll > 0 ? ((opd.totalPagu / totalPaguAll) * 100).toFixed(2) : 0;
+                    
+                    html += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td><strong>${opd.name}</strong></td>
+                            <td class="text-right">${formatNumberExact(opd.totalPagu)}</td>
+                            <td class="text-right">${formatNumberExact(opd.totalBelanjaBarangJasa)}</td>
+                            <td class="text-right" style="color: #1a2980; font-weight: bold;">${formatRoundedNumber(opd.up)}</td>
+                            <td class="text-right">${percentage}%</td>
+                        </tr>
+                    `;
+                });
+                
+                // Total row
+                html += `
+                        </tbody>
+                        <tfoot>
+                            <tr style="background-color: #f8f9fa; font-weight: bold;">
+                                <td colspan="2">TOTAL</td>
+                                <td class="text-right">${formatNumberExact(totalPaguAll)}</td>
+                                <td class="text-right">${formatNumberExact(sortedSummary.reduce((sum, opd) => sum + opd.totalBelanjaBarangJasa, 0))}</td>
+                                <td class="text-right" style="color: #1a2980;">${formatRoundedNumber(totalUP)}</td>
+                                <td class="text-right">100%</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                `;
+                
+                document.getElementById('upSummaryTable').innerHTML = html;
+            }
+            
+            displayOpdJenisSummary() {
+                if (!appState.opdJenisSummary) return;
+                
+                const opdJenisSummary = appState.opdJenisSummary;
+                
+                let html = `
+                    <div class="alert alert-info">
+                        <strong>Ringkasan per OPD per Jenis Belanja:</strong> Menampilkan total pagu per jenis belanja di setiap OPD/SKPD
+                        <br><small>Catatan: Pagu ditampilkan tanpa pembulatan, sesuai data asli</small>
+                    </div>
+                    
+                    <div class="summary-cards">
+                        <div class="result-card">
+                            <div class="result-title">Total OPD/SKPD</div>
+                            <div class="result-value">${opdJenisSummary.length}</div>
+                        </div>
+                        <div class="result-card">
+                            <div class="result-title">Total Pagu</div>
+                            <div class="result-value">${formatNumberExact(opdJenisSummary.reduce((sum, opd) => sum + opd.totalPagu, 0))}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Untuk setiap OPD, buat tabel
+                opdJenisSummary.forEach((opd, opdIndex) => {
+                    html += `
+                        <h4>${opd.name}</h4>
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Kode Jenis Belanja</th>
+                                        <th>Nama Jenis Belanja</th>
+                                        <th class="text-right">Jumlah Item</th>
+                                        <th class="text-right">Total Pagu</th>
+                                        <th class="text-right">% dari OPD</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    opd.jenisBelanja.forEach((jenis, jenisIndex) => {
+                        const percentage = opd.totalPagu > 0 ? ((jenis.totalPagu / opd.totalPagu) * 100).toFixed(2) : 0;
+                        
+                        html += `
+                            <tr>
+                                <td>${jenisIndex + 1}</td>
+                                <td><strong>${jenis.code}</strong></td>
+                                <td>${jenis.name}</td>
+                                <td class="text-right">${jenis.itemCount}</td>
+                                <td class="text-right">${formatNumberExact(jenis.totalPagu)}</td>
+                                <td class="text-right">${percentage}%</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    // Total row untuk OPD
+                    html += `
+                                </tbody>
+                                <tfoot>
+                                    <tr style="background-color: #f8f9fa; font-weight: bold;">
+                                        <td colspan="3">TOTAL ${opd.name}</td>
+                                        <td class="text-right">${opd.totalItem}</td>
+                                        <td class="text-right">${formatNumberExact(opd.totalPagu)}</td>
+                                        <td class="text-right">100%</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('opdJenisTable').innerHTML = html;
             }
             
             displayDataTable() {
@@ -2595,7 +3001,7 @@
                 const headerRow = document.createElement('tr');
                 
                 // Tambahkan semua kolom asli dari STANDARD_COLUMNS
-                const displayColumns = [...STANDARD_COLUMNS, 'KELOMPOK'];
+                const displayColumns = [...STANDARD_COLUMNS, 'JENIS_BELANJA'];
                 
                 displayColumns.forEach(col => {
                     const th = document.createElement('th');
@@ -2632,37 +3038,37 @@
                     displayColumns.forEach(col => {
                         let value = item[col] !== undefined ? item[col] : '';
                         
-                        // Format khusus untuk PAGU
+                        // Format khusus untuk PAGU (tanpa pembulatan)
                         if (col === 'PAGU') {
-                            value = this.formatNumber(value);
+                            value = formatNumberExact(value);
                         }
                         
-                        // Format kelompok
-                        if (col === 'KELOMPOK' && value) {
+                        // Format jenis belanja
+                        if (col === 'JENIS_BELANJA' && value) {
                             value = getGroupName(value) || value;
                         }
                         
                         const cell = document.createElement('td');
                         cell.textContent = value;
                         
-                        if (col === 'PAGU' || col === 'KELOMPOK') {
+                        if (col === 'PAGU' || col === 'JENIS_BELANJA') {
                             cell.className = 'text-right';
                         }
                         
                         row.appendChild(cell);
                     });
                     
-                    // Kolom bulan (12 bulan)
+                    // Kolom bulan (12 bulan) - tampilkan sebagai integer
                     item.allocations.forEach(amount => {
                         const cell = document.createElement('td');
-                        cell.textContent = this.formatNumber(amount);
+                        cell.textContent = formatInteger(amount);
                         cell.className = 'text-right';
                         row.appendChild(cell);
                     });
                     
-                    // Kolom total dialokasikan
+                    // Kolom total dialokasikan - tampilkan sebagai integer
                     const totalCell = document.createElement('td');
-                    totalCell.textContent = this.formatNumber(item.totalAllocated);
+                    totalCell.textContent = formatInteger(item.totalAllocated);
                     totalCell.className = 'text-right';
                     row.appendChild(totalCell);
                     
@@ -2686,29 +3092,40 @@
                 const container = document.getElementById('summaryTable');
                 const totalPagu = this.getTotalPagu();
                 const totalAllocated = appState.monthlyTotals.reduce((sum, val) => sum + val, 0);
+                const totalUP = appState.upSummary ? appState.upSummary.reduce((sum, opd) => sum + opd.up, 0) : 0;
+                const difference = totalAllocated - totalPagu;
                 
                 let html = `
-                    <div class="alert alert-info">
+                    <div class="alert ${difference === 0 ? 'alert-success' : 'alert-warning'}">
                         <h4>Ringkasan Hasil</h4>
                         <p>Total pagu berhasil dialokasikan ke semua bulan dengan pola ${this.getModeName(appState.selectedMode)}.</p>
+                        <p><strong>Selisih antara total pagu dan total alokasi: ${formatInteger(difference)}</strong></p>
+                        <p>${difference === 0 ? 
+                            '✓ Total alokasi sama persis dengan total pagu (selisih = 0)' : 
+                            '⚠️ Ada selisih antara total pagu dan total alokasi'}
+                        </p>
                     </div>
                     
                     <div class="stats-summary">
                         <div class="stat-card">
                             <div class="stat-label">Total Pagu Asli</div>
-                            <div class="stat-value">${this.formatNumber(totalPagu)}</div>
+                            <div class="stat-value">${formatNumberExact(totalPagu)}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Total Setelah Dialokasi</div>
-                            <div class="stat-value">${this.formatNumber(totalAllocated)}</div>
+                            <div class="stat-value">${formatInteger(totalAllocated)}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Selisih (Pembulatan)</div>
-                            <div class="stat-value">${this.formatNumber(totalAllocated - totalPagu)}</div>
+                            <div class="stat-value" style="${difference === 0 ? 'color: green;' : 'color: red;'}">${formatInteger(difference)}</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Persentase Selisih</div>
-                            <div class="stat-value">${totalPagu > 0 ? ((Math.abs(totalAllocated - totalPagu) / totalPagu * 100).toFixed(4)) : 0}%</div>
+                            <div class="stat-value">${totalPagu > 0 ? ((Math.abs(difference) / totalPagu * 100).toFixed(4)) : 0}%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total UP (10%)</div>
+                            <div class="result-value" style="color: #1a2980;">${formatRoundedNumber(totalUP)}</div>
                         </div>
                     </div>
                     
@@ -2737,7 +3154,7 @@
                     html += `
                         <tr>
                             <td>${BULAN_INDONESIA[item.month]}</td>
-                            <td class="text-right">${this.formatNumber(item.amount)}</td>
+                            <td class="text-right">${formatInteger(item.amount)}</td>
                             <td class="text-right">${percentage}%</td>
                             <td class="text-right">${index + 1}</td>
                         </tr>
@@ -2797,7 +3214,7 @@
                                 callbacks: {
                                     label: (context) => {
                                         const value = context.parsed.y;
-                                        return `${this.formatNumber(value)}`;
+                                        return `${formatInteger(value)}`;
                                     }
                                 }
                             }
@@ -2807,12 +3224,12 @@
                                 beginAtZero: true,
                                 ticks: {
                                     callback: (value) => {
-                                        return this.formatNumber(value);
+                                        return formatInteger(value);
                                     }
                                 },
                                 title: {
                                     display: true,
-                                    text: 'Jumlah'
+                                    text: 'Jumlah (bilangan bulat)'
                                 }
                             },
                             x: {
@@ -2832,14 +3249,20 @@
                     btn.classList.remove('active');
                 });
                 
-                document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
+                const tabBtn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+                if (tabBtn) {
+                    tabBtn.classList.add('active');
+                }
                 
                 // Show tab content
                 document.querySelectorAll('.tab-pane').forEach(pane => {
                     pane.classList.remove('active');
                 });
                 
-                document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
+                const tabContent = document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+                if (tabContent) {
+                    tabContent.classList.add('active');
+                }
             }
             
             downloadExcel() {
@@ -2849,7 +3272,7 @@
                     }
                     
                     // Prepare data for Excel
-                    const headers = [...STANDARD_COLUMNS, 'KELOMPOK'];
+                    const headers = [...STANDARD_COLUMNS, 'JENIS_BELANJA'];
                     
                     // Add month columns
                     BULAN_INDONESIA.forEach(bulan => {
@@ -2874,12 +3297,12 @@
                             row.push(value);
                         });
                         
-                        // Add kelompok
-                        row.push(item.KELOMPOK || '');
+                        // Add jenis belanja
+                        row.push(item.JENIS_BELANJA || '');
                         
-                        // Add monthly allocations
+                        // Add monthly allocations (bilangan bulat)
                         item.allocations.forEach(amount => {
-                            row.push(amount);
+                            row.push(amount); // Sudah bilangan bulat
                         });
                         
                         row.push(item.totalAllocated || 0);
@@ -2896,7 +3319,9 @@
                         ['Jumlah Data', appState.processedData.length],
                         ['Total Pagu', this.getTotalPagu()],
                         ['Total Dialokasikan', appState.monthlyTotals.reduce((a, b) => a + b, 0)],
+                        ['Selisih', appState.monthlyTotals.reduce((a, b) => a + b, 0) - this.getTotalPagu()],
                         ['Pola Distribusi', this.getModeName(appState.selectedMode)],
+                        ['Catatan', 'Alokasi per bulan berupa bilangan bulat tanpa desimal'],
                         [''],
                         ['ALOKASI PER BULAN'],
                         ['Bulan', 'Alokasi', 'Persentase']
@@ -2908,18 +3333,86 @@
                         summaryData.push([BULAN_INDONESIA[index], amount, `${percentage}%`]);
                     });
                     
-                    // Add group summary
-                    if (appState.selectedMode === 'per-kelompok' && appState.groupConfig) {
-                        summaryData.push(['']);
-                        summaryData.push(['KONFIGURASI PER KELOMPOK']);
-                        summaryData.push(['Kelompok', 'Nama Kelompok', ...BULAN_INDONESIA, 'Total']);
-                        
-                        Object.entries(appState.groupConfig).forEach(([groupCode, percentages]) => {
-                            const groupName = getGroupName(groupCode);
-                            const total = percentages.reduce((a, b) => a + b, 0);
-                            summaryData.push([groupCode, groupName, ...percentages, total]);
+                    // Add UP summary sheet
+                    const upSummary = appState.upSummary;
+                    const upData = [
+                        ['RINGKASAN UANG PERSEDIAAN (UP) PER OPD/SKPD'],
+                        ['Catatan: UP dihitung 10% dari total Belanja Barang dan Jasa (Jenis 5.1.02)'],
+                        ['UP telah dibulatkan ke ribuan terdekat'],
+                        [''],
+                        ['No', 'OPD/SKPD', 'Total Pagu', 'Total Belanja Barang & Jasa', 'UP (10%)', '% dari Total']
+                    ];
+                    
+                    const sortedUPSummary = [...upSummary].sort((a, b) => b.up - a.up);
+                    const totalPaguAll = sortedUPSummary.reduce((sum, opd) => sum + opd.totalPagu, 0);
+                    
+                    sortedUPSummary.forEach((opd, index) => {
+                        const percentage = totalPaguAll > 0 ? ((opd.totalPagu / totalPaguAll) * 100).toFixed(2) : 0;
+                        upData.push([
+                            index + 1,
+                            opd.name,
+                            opd.totalPagu,
+                            opd.totalBelanjaBarangJasa,
+                            roundToThousands(opd.up), // UP dibulatkan ke ribuan
+                            `${percentage}%`
+                        ]);
+                    });
+                    
+                    // Add total row
+                    upData.push([
+                        'TOTAL',
+                        '',
+                        sortedUPSummary.reduce((sum, opd) => sum + opd.totalPagu, 0),
+                        sortedUPSummary.reduce((sum, opd) => sum + opd.totalBelanjaBarangJasa, 0),
+                        roundToThousands(sortedUPSummary.reduce((sum, opd) => sum + opd.up, 0)),
+                        '100%'
+                    ]);
+                    
+                    // Add OPD per Jenis Belanja sheet
+                    const opdJenisData = [
+                        ['RINGKASAN PER OPD PER JENIS BELANJA'],
+                        ['Catatan: Pagu ditampilkan tanpa pembulatan'],
+                        [''],
+                        ['OPD/SKPD', 'Kode Jenis Belanja', 'Nama Jenis Belanja', 'Jumlah Item', 'Total Pagu']
+                    ];
+                    
+                    appState.opdJenisSummary.forEach(opd => {
+                        opd.jenisBelanja.forEach(jenis => {
+                            opdJenisData.push([
+                                opd.name,
+                                jenis.code,
+                                jenis.name,
+                                jenis.itemCount,
+                                jenis.totalPagu
+                            ]);
                         });
-                    }
+                    });
+                    
+                    // Add group summary sheet
+                    const groupSummary = this.fileProcessor.analyzeGroupSummary(appState.processedData);
+                    const groupData = [
+                        ['RINGKASAN PER JENIS BELANJA'],
+                        ['Catatan: Alokasi per bulan berupa bilangan bulat tanpa desimal'],
+                        [''],
+                        ['Kode', 'Nama Jenis Belanja', 'Jumlah Item', 'Total Pagu', ...BULAN_INDONESIA, 'Total Dialokasikan']
+                    ];
+                    
+                    groupSummary.groupDetails.forEach(group => {
+                        const groupCode = group.code;
+                        const groupTotals = appState.groupMonthlyTotals[groupCode] || new Array(12).fill(0);
+                        const totalGroupAllocated = groupTotals.reduce((sum, val) => sum + val, 0);
+                        
+                        const row = [
+                            groupCode,
+                            group.name,
+                            group.itemCount,
+                            group.totalPagu,
+                            ...groupTotals.map(amount => amount), // Sudah bilangan bulat
+                            totalGroupAllocated
+                        ];
+                        
+                        groupData.push(row);
+                    });
                     
                     // Create workbook
                     const workbook = XLSX.utils.book_new();
@@ -2931,6 +3424,18 @@
                     // Summary sheet
                     const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
                     XLSX.utils.book_append_sheet(workbook, summarySheet, 'Ringkasan');
+                    
+                    // UP sheet
+                    const upSheet = XLSX.utils.aoa_to_sheet(upData);
+                    XLSX.utils.book_append_sheet(workbook, upSheet, 'Ringkasan UP');
+                    
+                    // OPD per Jenis sheet
+                    const opdJenisSheet = XLSX.utils.aoa_to_sheet(opdJenisData);
+                    XLSX.utils.book_append_sheet(workbook, opdJenisSheet, 'OPD per Jenis Belanja');
+                    
+                    // Group sheet
+                    const groupSheet = XLSX.utils.aoa_to_sheet(groupData);
+                    XLSX.utils.book_append_sheet(workbook, groupSheet, 'Ringkasan Jenis Belanja');
                     
                     // Generate Excel file
                     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
@@ -2971,7 +3476,9 @@
                     processedData: null,
                     monthlyTotals: new Array(12).fill(0),
                     groupMonthlyTotals: {},
-                    chart: null
+                    chart: null,
+                    upSummary: null,
+                    opdJenisSummary: null
                 };
                 
                 // Reset UI
@@ -2996,14 +3503,6 @@
             // ===============================
             // 7. UTILITY FUNCTIONS
             // ===============================
-            
-            formatNumber(amount) {
-                const num = parseFloat(amount) || 0;
-                return num.toLocaleString('id-ID', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-            }
             
             showAlert(message, type = 'info') {
                 // Remove existing alerts
@@ -3074,6 +3573,7 @@
             
             console.log('Anggaran Kas Generator siap digunakan!');
             console.log('Dikembangkan oleh: Hendra, Bidang Perbendaharaan BPKAD Kabupaten Mamuju');
+            console.log('Fitur: Pagu dan alokasi sama persis, alokasi per bulan bilangan bulat, UP dibulatkan ke ribuan');
         });
     </script>
 </body>
