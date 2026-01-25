@@ -6,7 +6,9 @@
     <title>CERMAT CLOUD - BPKAD Kabupaten Mamuju</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        /* CSS tetap sama seperti sebelumnya */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -666,6 +668,107 @@
             color: #28a745;
         }
         
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .export-btn {
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .export-btn:hover {
+            background: #218838;
+        }
+        
+        .export-btn.export-excel {
+            background: #1d6f42;
+        }
+        
+        .export-btn.export-excel:hover {
+            background: #155d33;
+        }
+        
+        /* Styles khusus untuk tabel Realisasi Sumber Dana per SKPD */
+        .sumber-dana-table-container {
+            margin-top: 15px;
+        }
+        
+        .sumber-dana-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .sumber-dana-table th {
+            background: #1a2980;
+            color: white;
+            font-weight: 600;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        
+        .sumber-dana-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .sumber-dana-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .sumber-dana-table tr:hover {
+            background: #e9ecef;
+        }
+        
+        .sumber-dana-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            border-left: 4px solid #1a2980;
+        }
+        
+        .summary-item {
+            text-align: center;
+        }
+        
+        .summary-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .summary-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a2980;
+        }
+        
+        /* Styles untuk tabel dengan rowspan */
+        .skpd-row {
+            background: #f8f9fa !important;
+            font-weight: 600;
+        }
+        
+        .skpd-cell {
+            border-right: 2px solid #ddd;
+            background: #e9ecef;
+        }
+        
         @media (max-width: 768px) {
             .dashboard-header {
                 flex-direction: column;
@@ -705,6 +808,24 @@
             
             .btn-whatsapp {
                 width: 100%;
+            }
+            
+            .export-buttons {
+                flex-direction: column;
+            }
+            
+            .sumber-dana-table {
+                font-size: 14px;
+            }
+            
+            .sumber-dana-table th,
+            .sumber-dana-table td {
+                padding: 8px 10px;
+            }
+            
+            .sumber-dana-summary {
+                flex-direction: column;
+                gap: 15px;
             }
         }
     </style>
@@ -797,7 +918,7 @@
                             <option value="DINAS PEMBERDAYAAN PEREMPUAN DAN PERLINDUNGAN ANAK">DINAS PEMBERDAYAAN PEREMPUAN DAN PERLINDUNGAN ANAK</option>
                             <option value="DINAS KETAHANAN PANGAN">DINAS KETAHANAN PANGAN</option>
                             <option value="DINAS LINGKUNGAN HIDUP DAN KEBERSIHAN">DINAS LINGKUNGAN HIDUP DAN KEBERSIHAN</option>
-                            <option value="DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL">DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL</option>
+                            <option value="DINAS KEPENDUDUKAN DAN PENCATATAN SIPIL">DINAS KEPENDUDUKAN DAN PENCATatan SIPIL</option>
                             <option value="DINAS PEMBERDAYAAN MASYARAKAT DAN DESA">DINAS PEMBERDAYAAN MASYARAKAT DAN DESA</option>
                             <option value="DINAS PENGENDALIAN PENDUDUK DAN KELUARGA BERENCANA">DINAS PENGENDALIAN PENDUDUK DAN KELUARGA BERENCANA</option>
                             <option value="DINAS PERHUBUNGAN">DINAS PERHUBUNGAN</option>
@@ -926,6 +1047,12 @@
             <div id="dataTab" class="tab-content">
                 <h2 style="margin-bottom: 20px; color: #1a2980;">Data Transaksi</h2>
                 
+                <div class="export-buttons">
+                    <button class="export-btn export-excel" onclick="exportDataToExcel()">
+                        <i class="bi bi-file-earmark-excel"></i> Export ke Excel
+                    </button>
+                </div>
+                
                 <div class="filter-section">
                     <div class="filter-group">
                         <input type="text" id="searchInput" class="filter-input" placeholder="Cari SKPD, No SPM, atau Uraian...">
@@ -955,6 +1082,12 @@
             <div id="rekapTab" class="tab-content">
                 <h2 style="margin-bottom: 20px; color: #1a2980;">Rekap Data</h2>
                 
+                <div class="export-buttons">
+                    <button class="export-btn export-excel" onclick="exportRekapToExcel()">
+                        <i class="bi bi-file-earmark-excel"></i> Export Rekap ke Excel
+                    </button>
+                </div>
+                
                 <div class="table-container">
                     <h3 style="margin-bottom: 20px; color: #1a2980;">Rekap Pencairan per SKPD</h3>
                     <table id="rekapTable">
@@ -964,10 +1097,18 @@
                 
                 <div class="table-container" style="margin-top: 30px;">
                     <h3 style="margin-bottom: 20px; color: #1a2980;">Realisasi Sumber Dana per SKPD</h3>
-                    <div style="overflow-x: auto;">
-                        <table id="sumberDanaTable">
-                            <!-- Sumber dana table will be loaded here -->
-                        </table>
+                    <div id="sumberDanaPerSKPD">
+                        <!-- Sumber dana per SKPD akan dimuat di sini dengan format tabel yang rapi -->
+                    </div>
+                </div>
+                
+                <!-- Rekap Realisasi per Sumber Dana Pemda (hanya untuk perbend dan super admin) -->
+                <div id="rekapSumberDanaPemda" style="display: none;">
+                    <div class="table-container" style="margin-top: 30px;">
+                        <h3 style="margin-bottom: 20px; color: #1a2980;">Rekap Realisasi per Sumber Dana Pemda</h3>
+                        <div id="rekapSumberDanaContainer">
+                            <!-- Rekap sumber dana pemda akan dimuat di sini -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1154,10 +1295,13 @@
             if (user.hakAkses === 'semua' && (user.skpd === 'super admin' || user.skpd === 'bidang perbendaharaan')) {
                 document.getElementById('verifikasiBtn').style.display = 'block';
                 document.getElementById('uploadBtn').style.display = 'none';
+                // Tampilkan rekap sumber dana pemda untuk perbend dan super admin
+                document.getElementById('rekapSumberDanaPemda').style.display = 'block';
             } else {
                 // SKPD biasa hanya bisa input data
                 document.getElementById('uploadBtn').style.display = 'block';
                 document.getElementById('verifikasiBtn').style.display = 'none';
+                document.getElementById('rekapSumberDanaPemda').style.display = 'none';
             }
             
             // Show/hide admin button based on hakAkses
@@ -1175,7 +1319,8 @@
             document.getElementById('allTransactions').innerHTML = loadingHTML;
             document.getElementById('statsGrid').innerHTML = loadingHTML;
             document.getElementById('rekapTable').innerHTML = loadingHTML;
-            document.getElementById('sumberDanaTable').innerHTML = loadingHTML;
+            document.getElementById('sumberDanaPerSKPD').innerHTML = loadingHTML;
+            document.getElementById('rekapSumberDanaContainer').innerHTML = loadingHTML;
             
             // Show alert jika manual refresh
             if (showAlert) {
@@ -1383,6 +1528,10 @@
             populateSKPDFilter();
             updateDashboardStats();
             displayRekap();
+            displayRekapSumberDanaPerSKPD();
+            if (currentUser && (currentUser.skpd === 'super admin' || currentUser.skpd === 'bidang perbendaharaan')) {
+                displayRekapSumberDanaPemda();
+            }
             displayCharts();
         }
 
@@ -1558,12 +1707,10 @@
             processTransactions(sampleTransactions);
         }
 
-        // Format currency
+        // Format currency (tanpa Rp)
         function formatCurrency(amount) {
             if (isNaN(amount)) amount = 0;
             return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0
             }).format(amount);
@@ -1892,55 +2039,139 @@
             
             rekapHtml += '</tbody></table>';
             document.getElementById('rekapTable').innerHTML = rekapHtml;
+        }
+
+        // Display rekap sumber dana per SKPD dengan format tabel yang rapi
+        function displayRekapSumberDanaPerSKPD() {
+            const rekap = calculateRekapSumberDanaPerSKPD();
             
-            // Sumber Dana per SKPD (simplified version)
-            let sumberDanaHtml = '<table><thead><tr><th>SKPD</th><th>DAU</th><th>DAK</th><th>DBH</th><th>PAD</th><th>Dana Desa</th><th>SiLPA</th></tr></thead><tbody>';
+            if (rekap.length === 0) {
+                document.getElementById('sumberDanaPerSKPD').innerHTML = 
+                    '<div class="loading"><p>Tidak ada data realisasi sumber dana per SKPD</p></div>';
+                return;
+            }
             
-            rekap.sumberDanaPerSKPD.forEach(item => {
-                const dau = (item['DANA ALOKASI UMUM (DAU) - DAU BEBAS'] || 0) + 
-                           (item['DANA ALOKASI UMUM (DAU) - PENDIDIKAN'] || 0) + 
-                           (item['DANA ALOKASI UMUM (DAU) - KESEHATAN'] || 0) + 
-                           (item['DANA ALOKASI UMUM (DAU) - KELURAHAN'] || 0);
+            let html = '';
+            
+            // Ringkasan statistik
+            const totalSKPD = rekap.length;
+            let totalTransaksi = 0;
+            let totalRealisasi = 0;
+            
+            rekap.forEach(skpdData => {
+                skpdData.sumberDana.forEach(item => {
+                    totalTransaksi += item.jumlahTransaksi;
+                    totalRealisasi += item.total;
+                });
+            });
+            
+            html += `
+                <div class="sumber-dana-summary">
+                    <div class="summary-item">
+                        <div class="summary-label">Jumlah SKPD</div>
+                        <div class="summary-value">${totalSKPD}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Transaksi</div>
+                        <div class="summary-value">${totalTransaksi}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Realisasi</div>
+                        <div class="summary-value">${formatCurrency(totalRealisasi)}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Tabel untuk setiap SKPD
+            rekap.forEach((skpdData, skpdIndex) => {
+                html += `
+                    <div class="sumber-dana-table-container" style="margin-top: ${skpdIndex === 0 ? '10px' : '30px'}">
+                        <h4 style="color: #1a2980; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 2px solid #1a2980;">
+                            ${skpdData.skpd}
+                        </h4>
+                        <table class="sumber-dana-table">
+                            <thead>
+                                <tr>
+                                    <th>Sumber Dana</th>
+                                    <th>Jumlah Transaksi</th>
+                                    <th>Total Realisasi</th>
+                                    <th>Persentase</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
                 
-                const dak = (item['DANA ALOKASI KHUSUS - DAK FISIK'] || 0) + 
-                           (item['DANA ALOKASI KHUSUS - DAK NON FISIK'] || 0);
+                const totalSKPDValue = skpdData.sumberDana.reduce((sum, item) => sum + item.total, 0);
                 
-                const dbh = (item['DBH PUSAT - DBH Pusat'] || 0) + 
-                           (item['DBH PUSAT - SAWIT'] || 0) + 
-                           (item['DBH PROVINSI - DBH Provinsi'] || 0) + 
-                           (item['DBH PROVINSI - Pajak Rokok'] || 0);
+                skpdData.sumberDana.forEach(item => {
+                    const persentase = totalSKPDValue > 0 ? ((item.total / totalSKPDValue) * 100).toFixed(2) : 0;
+                    html += `
+                        <tr>
+                            <td>${item.nama}</td>
+                            <td>${item.jumlahTransaksi}</td>
+                            <td>${formatCurrency(item.total)}</td>
+                            <td>${persentase}%</td>
+                        </tr>
+                    `;
+                });
                 
-                const pad = (item['PENDAPATAN ASLI DAERAH - PAD'] || 0) + 
-                           (item['PENDAPATAN ASLI DAERAH - Pajak Penerangan Jalan'] || 0) + 
-                           (item['PENDAPATAN ASLI DAERAH - Opsen PKB'] || 0) + 
-                           (item['PENDAPATAN ASLI DAERAH - Pajak Air Bawah Tanah'] || 0) + 
-                           (item['PENDAPATAN ASLI DAERAH - Pelayanan Kesehatan'] || 0);
-                
-                const danaDesa = item['DANA DESA - DANA DESA'] || 0;
-                const silpa = item['SiLPA 2025 - SiLPA 2025'] || 0;
-                
-                sumberDanaHtml += `
+                // Total per SKPD
+                html += `
+                            </tbody>
+                            <tfoot>
+                                <tr style="background: #f8f9fa; font-weight: 600;">
+                                    <td>Total ${skpdData.skpd}</td>
+                                    <td>${skpdData.sumberDana.reduce((sum, item) => sum + item.jumlahTransaksi, 0)}</td>
+                                    <td>${formatCurrency(totalSKPDValue)}</td>
+                                    <td>100%</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('sumberDanaPerSKPD').innerHTML = html;
+        }
+
+        // Display rekap sumber dana pemda (hanya untuk perbend dan super admin)
+        function displayRekapSumberDanaPemda() {
+            const rekap = calculateRekapSumberDanaPemda();
+            
+            let html = '<table><thead><tr><th>Sumber Dana</th><th>Jumlah Transaksi</th><th>Total Realisasi</th><th>Persentase</th></tr></thead><tbody>';
+            
+            const totalAll = rekap.reduce((sum, item) => sum + item.total, 0);
+            
+            rekap.forEach(item => {
+                const persentase = totalAll > 0 ? ((item.total / totalAll) * 100).toFixed(2) : 0;
+                html += `
                     <tr>
-                        <td>${item.skpd}</td>
-                        <td>${formatCurrency(dau)}</td>
-                        <td>${formatCurrency(dak)}</td>
-                        <td>${formatCurrency(dbh)}</td>
-                        <td>${formatCurrency(pad)}</td>
-                        <td>${formatCurrency(danaDesa)}</td>
-                        <td>${formatCurrency(silpa)}</td>
+                        <td>${item.nama}</td>
+                        <td>${item.jumlahTransaksi}</td>
+                        <td>${formatCurrency(item.total)}</td>
+                        <td>${persentase}%</td>
                     </tr>
                 `;
             });
             
-            sumberDanaHtml += '</tbody></table>';
-            document.getElementById('sumberDanaTable').innerHTML = sumberDanaHtml;
+            // Total
+            html += `
+                <tr style="background: #f8f9fa; font-weight: 600;">
+                    <td>TOTAL</td>
+                    <td>${rekap.reduce((sum, item) => sum + item.jumlahTransaksi, 0)}</td>
+                    <td>${formatCurrency(totalAll)}</td>
+                    <td>100%</td>
+                </tr>
+            `;
+            
+            html += `</tbody></table>`;
+            document.getElementById('rekapSumberDanaContainer').innerHTML = html;
         }
 
         // Calculate rekap data
         function calculateRekap() {
             const rekap = {
-                perSKPD: [],
-                sumberDanaPerSKPD: []
+                perSKPD: []
             };
             
             // Group by SKPD
@@ -1967,42 +2198,152 @@
                 average: skpdGroups[skpd].total / skpdGroups[skpd].count
             })).sort((a, b) => b.total - a.total);
             
-            // Calculate sumber dana per SKPD
-            rekap.sumberDanaPerSKPD = rekap.perSKPD.map(item => {
-                const skpdData = skpdGroups[item.skpd];
-                const result = { skpd: item.skpd };
-                
-                // Sum each sumber dana field
-                const sumberDanaFields = [
-                    'DANA ALOKASI UMUM (DAU) - DAU BEBAS',
-                    'DANA ALOKASI UMUM (DAU) - PENDIDIKAN',
-                    'DANA ALOKASI UMUM (DAU) - KESEHATAN',
-                    'DANA ALOKASI UMUM (DAU) - KELURAHAN',
-                    'DANA ALOKASI KHUSUS - DAK FISIK',
-                    'DANA ALOKASI KHUSUS - DAK NON FISIK',
-                    'DBH PUSAT - SAWIT',
-                    'DBH PUSAT - DBH Pusat',
-                    'DBH PROVINSI - Pajak Rokok',
-                    'DBH PROVINSI - DBH Provinsi',
-                    'PENDAPATAN ASLI DAERAH - Pajak Penerangan Jalan',
-                    'PENDAPATAN ASLI DAERAH - Opsen PKB',
-                    'PENDAPATAN ASLI DAERAH - Pajak Air Bawah Tanah',
-                    'PENDAPATAN ASLI DAERAH - Pelayanan Kesehatan',
-                    'PENDAPATAN ASLI DAERAH - PAD',
-                    'DANA DESA - DANA DESA',
-                    'SiLPA 2025 - SiLPA 2025'
-                ];
-                
-                sumberDanaFields.forEach(field => {
-                    result[field] = skpdData.transactions.reduce((sum, t) => {
-                        return sum + (t[field + '_NUM'] || 0);
-                    }, 0);
-                });
-                
-                return result;
+            return rekap;
+        }
+
+        // Calculate rekap sumber dana per SKPD
+        function calculateRekapSumberDanaPerSKPD() {
+            const result = [];
+            
+            // Group transactions by SKPD
+            const skpdGroups = {};
+            allTransactions.forEach(transaction => {
+                const skpd = transaction.SKPD || 'Unknown';
+                if (!skpdGroups[skpd]) {
+                    skpdGroups[skpd] = [];
+                }
+                skpdGroups[skpd].push(transaction);
             });
             
-            return rekap;
+            // Process each SKPD
+            Object.keys(skpdGroups).forEach(skpd => {
+                const transactions = skpdGroups[skpd];
+                const sumberDanaMap = {};
+                
+                // Define sumber dana fields
+                const sumberDanaFields = [
+                    { field: 'DANA ALOKASI UMUM (DAU) - DAU BEBAS', name: 'DAU Bebas' },
+                    { field: 'DANA ALOKASI UMUM (DAU) - PENDIDIKAN', name: 'DAU Pendidikan' },
+                    { field: 'DANA ALOKASI UMUM (DAU) - KESEHATAN', name: 'DAU Kesehatan' },
+                    { field: 'DANA ALOKASI UMUM (DAU) - KELURAHAN', name: 'DAU Kelurahan' },
+                    { field: 'DANA ALOKASI KHUSUS - DAK FISIK', name: 'DAK Fisik' },
+                    { field: 'DANA ALOKASI KHUSUS - DAK NON FISIK', name: 'DAK Non Fisik' },
+                    { field: 'DBH PUSAT - SAWIT', name: 'DBH Sawit' },
+                    { field: 'DBH PUSAT - DBH Pusat', name: 'DBH Pusat' },
+                    { field: 'DBH PROVINSI - Pajak Rokok', name: 'DBH Pajak Rokok' },
+                    { field: 'DBH PROVINSI - DBH Provinsi', name: 'DBH Provinsi' },
+                    { field: 'PENDAPATAN ASLI DAERAH - Pajak Penerangan Jalan', name: 'PAD Penerangan Jalan' },
+                    { field: 'PENDAPATAN ASLI DAERAH - Opsen PKB', name: 'PAD Opsen PKB' },
+                    { field: 'PENDAPATAN ASLI DAERAH - Pajak Air Bawah Tanah', name: 'PAD Air Bawah Tanah' },
+                    { field: 'PENDAPATAN ASLI DAERAH - Pelayanan Kesehatan', name: 'PAD Pelayanan Kesehatan' },
+                    { field: 'PENDAPATAN ASLI DAERAH - PAD', name: 'PAD Lainnya' },
+                    { field: 'DANA DESA - DANA DESA', name: 'Dana Desa' },
+                    { field: 'SiLPA 2025 - SiLPA 2025', name: 'SiLPA 2025' }
+                ];
+                
+                // Initialize sumber dana map
+                sumberDanaFields.forEach(item => {
+                    sumberDanaMap[item.field] = {
+                        nama: item.name,
+                        jumlahTransaksi: 0,
+                        total: 0
+                    };
+                });
+                
+                // Calculate for each transaction
+                transactions.forEach(transaction => {
+                    sumberDanaFields.forEach(item => {
+                        const value = transaction[item.field + '_NUM'] || 0;
+                        if (value > 0) {
+                            sumberDanaMap[item.field].jumlahTransaksi++;
+                            sumberDanaMap[item.field].total += value;
+                        }
+                    });
+                });
+                
+                // Filter hanya yang ada realisasinya
+                const sumberDanaList = [];
+                sumberDanaFields.forEach(item => {
+                    if (sumberDanaMap[item.field].jumlahTransaksi > 0) {
+                        sumberDanaList.push(sumberDanaMap[item.field]);
+                    }
+                });
+                
+                // Sort by total descending
+                sumberDanaList.sort((a, b) => b.total - a.total);
+                
+                // Add to result if there's any sumber dana
+                if (sumberDanaList.length > 0) {
+                    result.push({
+                        skpd: skpd,
+                        sumberDana: sumberDanaList
+                    });
+                }
+            });
+            
+            // Sort SKPD by name
+            result.sort((a, b) => a.skpd.localeCompare(b.skpd));
+            
+            return result;
+        }
+
+        // Calculate rekap sumber dana pemda
+        function calculateRekapSumberDanaPemda() {
+            const result = [];
+            
+            // Define sumber dana fields
+            const sumberDanaFields = [
+                { field: 'DANA ALOKASI UMUM (DAU) - DAU BEBAS', name: 'DAU Bebas' },
+                { field: 'DANA ALOKASI UMUM (DAU) - PENDIDIKAN', name: 'DAU Pendidikan' },
+                { field: 'DANA ALOKASI UMUM (DAU) - KESEHATAN', name: 'DAU Kesehatan' },
+                { field: 'DANA ALOKASI UMUM (DAU) - KELURAHAN', name: 'DAU Kelurahan' },
+                { field: 'DANA ALOKASI KHUSUS - DAK FISIK', name: 'DAK Fisik' },
+                { field: 'DANA ALOKASI KHUSUS - DAK NON FISIK', name: 'DAK Non Fisik' },
+                { field: 'DBH PUSAT - SAWIT', name: 'DBH Sawit' },
+                { field: 'DBH PUSAT - DBH Pusat', name: 'DBH Pusat' },
+                { field: 'DBH PROVINSI - Pajak Rokok', name: 'DBH Pajak Rokok' },
+                { field: 'DBH PROVINSI - DBH Provinsi', name: 'DBH Provinsi' },
+                { field: 'PENDAPATAN ASLI DAERAH - Pajak Penerangan Jalan', name: 'PAD Penerangan Jalan' },
+                { field: 'PENDAPATAN ASLI DAERAH - Opsen PKB', name: 'PAD Opsen PKB' },
+                { field: 'PENDAPATAN ASLI DAERAH - Pajak Air Bawah Tanah', name: 'PAD Air Bawah Tanah' },
+                { field: 'PENDAPATAN ASLI DAERAH - Pelayanan Kesehatan', name: 'PAD Pelayanan Kesehatan' },
+                { field: 'PENDAPATAN ASLI DAERAH - PAD', name: 'PAD Lainnya' },
+                { field: 'DANA DESA - DANA DESA', name: 'Dana Desa' },
+                { field: 'SiLPA 2025 - SiLPA 2025', name: 'SiLPA 2025' }
+            ];
+            
+            // Initialize result map
+            const sumberDanaMap = {};
+            sumberDanaFields.forEach(item => {
+                sumberDanaMap[item.field] = {
+                    nama: item.name,
+                    jumlahTransaksi: 0,
+                    total: 0
+                };
+            });
+            
+            // Calculate totals
+            allTransactions.forEach(transaction => {
+                sumberDanaFields.forEach(item => {
+                    const value = transaction[item.field + '_NUM'] || 0;
+                    if (value > 0) {
+                        sumberDanaMap[item.field].jumlahTransaksi++;
+                        sumberDanaMap[item.field].total += value;
+                    }
+                });
+            });
+            
+            // Convert to array and filter only those with transactions
+            sumberDanaFields.forEach(item => {
+                if (sumberDanaMap[item.field].jumlahTransaksi > 0) {
+                    result.push(sumberDanaMap[item.field]);
+                }
+            });
+            
+            // Sort by total descending
+            result.sort((a, b) => b.total - a.total);
+            
+            return result;
         }
 
         // Display charts
@@ -2042,11 +2383,11 @@
                                 ticks: {
                                     callback: function(value) {
                                         if (value >= 1000000) {
-                                            return 'Rp ' + (value / 1000000).toFixed(1) + 'M';
+                                            return (value / 1000000).toFixed(1) + 'M';
                                         } else if (value >= 1000) {
-                                            return 'Rp ' + (value / 1000).toFixed(0) + 'K';
+                                            return (value / 1000).toFixed(0) + 'K';
                                         }
-                                        return 'Rp ' + value;
+                                        return value;
                                     }
                                 }
                             }
@@ -2139,11 +2480,11 @@
                                 ticks: {
                                     callback: function(value) {
                                         if (value >= 1000000) {
-                                            return 'Rp ' + (value / 1000000).toFixed(1) + 'M';
+                                            return (value / 1000000).toFixed(1) + 'M';
                                         } else if (value >= 1000) {
-                                            return 'Rp ' + (value / 1000).toFixed(0) + 'K';
+                                            return (value / 1000).toFixed(0) + 'K';
                                         }
-                                        return 'Rp ' + value;
+                                        return value;
                                     }
                                 }
                             }
@@ -2220,6 +2561,129 @@
             return months[monthName] || 0;
         }
 
+        // Export data to Excel
+        function exportDataToExcel() {
+            if (filteredTransactions.length === 0) {
+                alert('Tidak ada data untuk diexport');
+                return;
+            }
+            
+            // Prepare data for export
+            const exportData = filteredTransactions.map((transaction, index) => {
+                return {
+                    'No': index + 1,
+                    'Timestamp': transaction.Timestamp || '',
+                    'SKPD': transaction.SKPD || '',
+                    'Jenis Dokumen': transaction['JENIS DOKUMEN'] || '',
+                    'Tanggal SPM': transaction['TANGGAL SPM'] || '',
+                    'No SPM': transaction['NOMOR SPM'] || '',
+                    'Uraian SPM': transaction['URAIAN SPM'] || '',
+                    'Jumlah': transaction.JUMLAH_NUM || 0,
+                    'No SP2D': transaction['NOMOR SP2D'] || '',
+                    'Nama Operator': transaction['NAMA OPERATOR'] || '',
+                    'Keterangan': transaction.KETERANGAN || ''
+                };
+            });
+            
+            // Create worksheet
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Data Transaksi');
+            
+            // Generate file name
+            const fileName = `Data_Transaksi_CERMAT_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            
+            // Export to file
+            XLSX.writeFile(wb, fileName);
+        }
+
+        // Export rekap to Excel
+        function exportRekapToExcel() {
+            // Prepare rekap data
+            const rekapSKPD = calculateRekap();
+            const rekapSumberDana = calculateRekapSumberDanaPerSKPD();
+            const rekapSumberDanaPemda = currentUser && (currentUser.skpd === 'super admin' || currentUser.skpd === 'bidang perbendaharaan') 
+                ? calculateRekapSumberDanaPemda() 
+                : [];
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Sheet 1: Rekap per SKPD
+            const ws1Data = [
+                ['REKAP PENCARIAN PER SKPD'],
+                ['No', 'SKPD', 'Jumlah Transaksi', 'Total Nilai', 'Rata-rata per Transaksi']
+            ];
+            
+            rekapSKPD.perSKPD.forEach((item, index) => {
+                ws1Data.push([
+                    index + 1,
+                    item.skpd,
+                    item.count,
+                    item.total,
+                    item.average
+                ]);
+            });
+            
+            const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
+            
+            // Sheet 2: Realisasi Sumber Dana per SKPD
+            const ws2Data = [
+                ['REALISASI SUMBER DANA PER SKPD']
+            ];
+            
+            rekapSumberDana.forEach(skpdData => {
+                ws2Data.push(['']); // Blank row
+                ws2Data.push([skpdData.skpd]);
+                ws2Data.push(['Sumber Dana', 'Jumlah Transaksi', 'Jumlah Realisasi']);
+                
+                skpdData.sumberDana.forEach(item => {
+                    ws2Data.push([
+                        item.nama,
+                        item.jumlahTransaksi,
+                        item.total
+                    ]);
+                });
+            });
+            
+            const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
+            
+            // Sheet 3: Rekap Sumber Dana Pemda (jika ada)
+            if (rekapSumberDanaPemda.length > 0) {
+                const ws3Data = [
+                    ['REKAP REALISASI PER SUMBER DANA PEMDA'],
+                    ['Sumber Dana', 'Jumlah Transaksi', 'Total Realisasi', 'Persentase']
+                ];
+                
+                const totalAll = rekapSumberDanaPemda.reduce((sum, item) => sum + item.total, 0);
+                
+                rekapSumberDanaPemda.forEach(item => {
+                    const persentase = totalAll > 0 ? ((item.total / totalAll) * 100).toFixed(2) : 0;
+                    ws3Data.push([
+                        item.nama,
+                        item.jumlahTransaksi,
+                        item.total,
+                        persentase + '%'
+                    ]);
+                });
+                
+                const ws3 = XLSX.utils.aoa_to_sheet(ws3Data);
+                XLSX.utils.book_append_sheet(wb, ws3, 'Rekap Sumber Dana');
+            }
+            
+            // Add sheets to workbook
+            XLSX.utils.book_append_sheet(wb, ws1, 'Rekap SKPD');
+            XLSX.utils.book_append_sheet(wb, ws2, 'Realisasi per SKPD');
+            
+            // Generate file name
+            const fileName = `Rekap_CERMAT_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            
+            // Export to file
+            XLSX.writeFile(wb, fileName);
+        }
+
         // Function untuk modal request
         function showRequestForm() {
             document.getElementById('requestModal').style.display = 'flex';
@@ -2291,6 +2755,10 @@
             // Refresh data if needed
             if (tabName === 'rekap') {
                 displayRekap();
+                displayRekapSumberDanaPerSKPD();
+                if (currentUser && (currentUser.skpd === 'super admin' || currentUser.skpd === 'bidang perbendaharaan')) {
+                    displayRekapSumberDanaPemda();
+                }
             } else if (tabName === 'grafik') {
                 displayCharts();
             }
